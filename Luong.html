@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EduSalary - Web App Hỗ Trợ Tính Lương Dự Kiến</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            text: '#f1f5f9',
+                            muted: '#94a3b8'
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                        'pop': 'pop 0.3s ease-out'
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(0.95)' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '100%': { transform: 'scale(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        
+        body, .bg-white, .border-slate-200, .text-slate-800, input, select, textarea {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Tối ưu form input cho thao tác chạm trên Mobile */
+        .form-input {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.5rem;
+            border-width: 1px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        @media (min-width: 768px) { .form-input { font-size: 0.875rem; padding: 0.5rem 0.75rem; } }
+        
+        .light .form-input { background-color: #f8fafc; border-color: #e2e8f0; color: #334155; }
+        .light .form-input:focus { background-color: #ffffff; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+
+        .dark .form-input { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+        .dark .form-input:focus { background-color: #1e293b; border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.1); }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+
+        /* Animation delays cho các card */
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        
+        /* Chống giật layout lúc chưa load animation */
+        .animate-fade-in-up { opacity: 0; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-dark-bg min-h-screen text-slate-800 dark:text-dark-text pb-12 selection:bg-blue-200 dark:selection:bg-blue-900 font-sans overflow-x-hidden">
+
+    <!-- Navbar -->
+    <nav class="bg-white dark:bg-dark-card border-b border-slate-200 dark:border-dark-border sticky top-0 z-40 shadow-sm transition-colors">
+        <div class="max-w-7xl mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 md:gap-3">
+                <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
+                    <i class="fa-solid fa-calculator text-xs md:text-sm"></i>
+                </div>
+                <h1 class="font-bold text-base md:text-xl tracking-tight dark:text-white">EduSalary</h1>
+            </div>
+            
+            <div class="flex items-center gap-1 md:gap-2">
+                <!-- Nút Chuông Hướng Dẫn -->
+                <button id="helpToggle" class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-amber-500 hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors focus:outline-none" title="Hướng dẫn sử dụng">
+                    <i class="fa-regular fa-bell text-lg hover:animate-shake"></i>
+                </button>
+                <!-- Nút Cài đặt -->
+                <button id="configToggle" class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors focus:outline-none" title="Cấu hình hệ số">
+                    <i class="fa-solid fa-gear text-lg hover:rotate-90 transition-transform duration-300"></i>
+                </button>
+                <!-- Nút Đổi Theme -->
+                <button id="themeToggle" class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors focus:outline-none" title="Giao diện Sáng/Tối">
+                    <i class="fa-solid fa-moon text-lg dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-lg hidden dark:block text-amber-400"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Text -->
+    <div class="max-w-7xl mx-auto px-4 mt-6 md:mt-8 mb-6 text-center md:text-left animate-fade-in-up">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">Tính mức lương dự kiến</h2>
+        <p class="text-sm text-slate-500 dark:text-dark-muted mt-2 max-w-3xl leading-relaxed">
+            Công cụ hỗ trợ liệt kê chi tiết dòng tiền (Khoảng được hưởng, Thực lãnh, Tiền BHXH) theo đúng thông tư hiện hành. Từ đó tính ra mức lương dự kiến của bạn.
+        </p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        
+        <!-- ================= FORM NHẬP LIỆU ================= -->
+        <div class="lg:col-span-6 space-y-6">
+            
+            <!-- NHÓM 1: THÔNG TIN CƠ BẢN -->
+            <div class="bg-white dark:bg-dark-card rounded-2xl shadow-sm hover:shadow-md border border-slate-200 dark:border-dark-border p-5 md:p-6 relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up delay-100">
+                <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                <h3 class="font-bold text-slate-800 dark:text-white flex items-center mb-5 text-sm uppercase tracking-wider">
+                    <i class="fa-solid fa-id-card text-blue-500 mr-2"></i> Ngạch Bậc & Chức Vụ
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5 mb-5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Cấp giảng dạy</label>
+                        <select id="capHoc" class="form-input">
+                            <option value="MN">Mầm non</option>
+                            <option value="PT">Tiểu học, THCS, THPT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Hạng chức danh</label>
+                        <select id="hangChucDanh" class="form-input">
+                            <option value="III">Hạng III</option>
+                            <option value="II">Hạng II</option>
+                            <option value="I">Hạng I</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Bậc lương</label>
+                        <select id="bacLuong" class="form-input"></select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Hệ số lương</label>
+                        <input type="number" id="heSo" step="0.01" class="form-input font-bold text-blue-600 dark:text-blue-400">
+                        <p id="hintVuotKhung" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5 hidden font-medium leading-tight transition-opacity">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>Đã đạt bậc tối đa. Nhập % Vượt khung nếu có.
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Lương cơ sở (VNĐ)</label>
+                        <input type="text" id="luongCoSo" value="2.340.000" class="form-input font-semibold text-slate-800 dark:text-white currency-input">
+                    </div>
+
+                    <div class="sm:col-span-2 grid grid-cols-[2fr_1fr] gap-3 md:gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Chức vụ quản lý</label>
+                            <select id="chucVu" class="form-input">
+                                <option value="0">Giáo viên</option>
+                                <option value="0.50">Hiệu trưởng (Hạng I: 0.50)</option>
+                                <option value="0.40">Hiệu trưởng (Hạng II: 0.40)</option>
+                                <option value="0.35">Hiệu trưởng (Hạng III: 0.35) / P.HT Hạng I</option>
+                                <option value="0.30">Phó Hiệu trưởng (Hạng II: 0.30)</option>
+                                <option value="0.25">Phó Hiệu trưởng (Hạng III: 0.25)</option>
+                                <option value="0.20">Tổ trưởng chuyên môn (0.20)</option>
+                                <option value="0.15">Tổ phó chuyên môn (0.15)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Hệ số chức vụ</label>
+                            <input type="number" id="heSoChucVu" step="0.01" value="0" class="form-input font-bold text-center">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NHÓM 2: PHỤ CẤP -->
+            <div class="bg-white dark:bg-dark-card rounded-2xl shadow-sm hover:shadow-md border border-slate-200 dark:border-dark-border p-5 md:p-6 relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up delay-200">
+                <div class="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+                <h3 class="font-bold text-slate-800 dark:text-white flex items-center mb-5 text-sm uppercase tracking-wider">
+                    <i class="fa-solid fa-layer-group text-green-500 mr-2"></i> Phụ Cấp Quy Định
+                </h3>
+
+                <div class="grid grid-cols-2 gap-x-4 gap-y-4 md:gap-x-5">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">% Vượt khung</label>
+                        <div class="relative">
+                            <input type="number" id="pcVuotKhung" value="0" min="0" class="form-input pr-8 text-green-700 dark:text-green-400 font-bold transition-all focus:ring-2 focus:ring-green-400">
+                            <span class="absolute right-3 top-2 md:top-1.5 text-slate-400 text-sm">%</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Thâm niên (Năm)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="thamNien" value="0" min="0" class="form-input text-center flex-1">
+                            <span class="text-slate-400 text-xs shrink-0"><i class="fa-solid fa-arrow-right"></i></span>
+                            <input type="text" id="pcThamNienHienThi" disabled value="0%" class="form-input text-center font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-transparent flex-1">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">% Ưu đãi nghề</label>
+                        <select id="pcUuDai" class="form-input">
+                            <option value="0">0%</option>
+                            <option value="35" selected>35% (Phổ thông)</option>
+                            <option value="50">50% (Bãi ngang, hải đảo)</option>
+                            <option value="70">70% (ĐBKK)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">% Thu hút ĐBKK</label>
+                        <select id="pcThuHut" class="form-input">
+                            <option value="0" selected>0% (Không)</option>
+                            <option value="70">70% (Có)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">HS PC Khu vực</label>
+                        <select id="heSoKhuVuc" class="form-input">
+                            <option value="0" selected>0.0 (Không)</option>
+                            <option value="0.1">0.1</option>
+                            <option value="0.2">0.2</option>
+                            <option value="0.3">0.3</option>
+                            <option value="0.4">0.4</option>
+                            <option value="0.5">0.5</option>
+                            <option value="0.7">0.7</option>
+                            <option value="1.0">1.0</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">HS PC Trách nhiệm</label>
+                        <input type="number" id="heSoTrachNhiem" step="0.1" value="0" min="0" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- NHÓM 3: THU NHẬP KHÁC -->
+            <div class="bg-white dark:bg-dark-card rounded-2xl shadow-sm hover:shadow-md border border-slate-200 dark:border-dark-border p-5 md:p-6 relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up delay-300">
+                <div class="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+                <h3 class="font-bold text-slate-800 dark:text-white flex items-center mb-5 text-sm uppercase tracking-wider">
+                    <i class="fa-solid fa-gift text-purple-500 mr-2"></i> Thu Nhập Khác
+                </h3>
+                <div class="grid grid-cols-2 gap-4 md:gap-5">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Nguồn tự chủ (VNĐ)</label>
+                        <input type="text" id="thuNhapTangThem" value="" class="form-input currency-input" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Khác (Ăn trưa...) (VNĐ)</label>
+                        <input type="text" id="pcKhac" value="" class="form-input currency-input" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= BẢNG KẾT QUẢ & CÔNG THỨC ================= -->
+        <div class="lg:col-span-6 flex flex-col gap-6 animate-fade-in-up delay-200">
+            
+            <!-- Card Tổng Thực Lãnh -->
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-800 dark:to-indigo-900 rounded-3xl shadow-xl overflow-hidden text-white relative transition-all duration-300 hover:shadow-blue-500/30">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+                
+                <div class="px-4 py-8 md:px-6 flex flex-col items-center justify-center text-center relative z-10">
+                    <p class="text-xs md:text-sm text-blue-200 font-medium tracking-wider mb-2 uppercase">Lương Thực Lãnh Dự Kiến</p>
+                    <h3 id="txtThucLanh" class="text-4xl md:text-5xl font-extrabold tracking-tight truncate w-full transform origin-center">
+                        0 đ
+                    </h3>
+                    <div class="mt-6 flex flex-wrap justify-center gap-3 md:gap-4 text-sm font-medium w-full">
+                        <div class="bg-white/10 px-3 py-2 md:px-4 rounded-xl backdrop-blur-sm border border-white/20 flex-1 min-w-[110px] max-w-[200px]">
+                            <p class="text-blue-200 text-[10px] md:text-xs mb-1">Tổng Thu Nhập</p>
+                            <p id="txtGrossTop" class="font-bold text-white text-sm md:text-base truncate">0 đ</p>
+                        </div>
+                        <div class="bg-red-500/30 px-3 py-2 md:px-4 rounded-xl backdrop-blur-sm border border-red-400/30 flex-1 min-w-[110px] max-w-[200px]">
+                            <p class="text-red-200 text-[10px] md:text-xs mb-1">Trừ BHXH</p>
+                            <p id="txtBhxhTop" class="font-bold text-red-100 text-sm md:text-base truncate">0 đ</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-white-500 dark:text-white-muted mt-2 max-w-3xl leading-relaxed">
+            Chỉ tham khảo, hệ thống có thể sai số!
+        </p>
+                </div>
+            </div>
+
+            <!-- Card Bảng Chi Tiết -->
+            <div class="bg-white dark:bg-dark-card rounded-2xl shadow-sm hover:shadow-md border border-slate-200 dark:border-dark-border p-5 md:p-6 flex-1 flex flex-col transition-all duration-300">
+                <h2 class="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-4">
+                    Chi Tiết Các Khoản
+                </h2>
+
+                <div class="space-y-4 flex-1">
+                    
+                    <!-- KHOẢN ĐƯỢC HƯỞNG (NỀN XANH) -->
+                    <div class="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 overflow-hidden transition-colors duration-300 hover:border-blue-300 dark:hover:border-blue-700">
+                        <div class="bg-blue-100/60 dark:bg-blue-800/40 px-4 py-2.5 font-bold text-blue-800 dark:text-blue-300 text-xs uppercase tracking-wide">
+                            <i class="fa-solid fa-plus-circle mr-1.5"></i> Các khoản được hưởng
+                        </div>
+                        <div id="listHuong" class="p-3 md:p-4 space-y-3">
+                            <!-- JS Inject -->
+                        </div>
+                        <div class="px-4 py-3 bg-blue-50 dark:bg-blue-900/30 flex justify-between font-bold text-blue-900 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/30">
+                            <span class="text-sm">Tổng Thu Nhập</span>
+                            <span id="txtGross" class="text-[15px]">0 đ</span>
+                        </div>
+                    </div>
+
+                    <!-- KHOẢN BỊ TRỪ (NỀN CAM) -->
+                    <div class="bg-orange-50/50 dark:bg-orange-900/10 rounded-xl border border-orange-100 dark:border-orange-800/30 overflow-hidden transition-colors duration-300 hover:border-orange-300 dark:hover:border-orange-700">
+                        <div class="bg-orange-100/60 dark:bg-orange-800/40 px-4 py-2.5 font-bold text-orange-800 dark:text-orange-300 text-xs uppercase tracking-wide">
+                            <i class="fa-solid fa-minus-circle mr-1.5"></i> Các khoản bị trừ
+                        </div>
+                        <div id="listTru" class="p-3 md:p-4 space-y-3">
+                            <div class="bg-white/50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-orange-100/50 dark:border-orange-800/20 mb-3">
+                                <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Cơ sở tính BHXH (Nền đóng)</p>
+                                <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed" id="fmNenBhxh">LCB</p>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p id="lblBhxhDetail" class="text-sm font-semibold text-orange-800 dark:text-orange-400">Trừ BHXH, BHYT, BHTN (10.5%)</p>
+                                    <p class="text-[11px] text-orange-600/80 dark:text-orange-400/70 mt-0.5" id="fmBhxhDetail">Nền đóng BHXH × 10.5%</p>
+                                </div>
+                                <div class="font-bold text-orange-700 dark:text-orange-400" id="txtBhxh">- 0 đ</div>
+                            </div>
+                        </div>
+                        <div class="px-4 py-3 bg-orange-50 dark:bg-orange-900/30 flex justify-between font-bold text-orange-900 dark:text-orange-200 border-t border-orange-100 dark:border-orange-800/30">
+                            <span class="text-sm">Tổng Bị Trừ</span>
+                            <span id="txtTongTru" class="text-[15px]">0 đ</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CẤU HÌNH -->
+    <div id="configModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div id="configBackdrop" class="absolute inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm transition-opacity opacity-0"></div>
+        <div id="configContent" class="relative bg-white dark:bg-dark-card w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] transition-all transform scale-95 opacity-0">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-dark-border flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center">
+                    <i class="fa-solid fa-gear mr-2 text-blue-500"></i> Cấu Hình Hệ Thống
+                </h3>
+                <button id="closeConfigBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-transform hover:rotate-90 p-1">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm text-blue-800 dark:text-blue-300 font-medium border border-blue-100 dark:border-blue-800/50">
+                    Đang cấu hình hệ số cho cấp: <span id="cfgTitleCap" class="font-bold text-blue-600 dark:text-blue-400">Mầm non</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Tỷ lệ trừ BHXH (%)</label>
+                    <input type="number" id="cfgBhxh" step="0.1" class="form-input">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Hệ số lương - Hạng III</label>
+                    <textarea id="cfgHang3" class="form-input font-mono text-sm leading-relaxed" rows="2"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Hệ số lương - Hạng II</label>
+                    <textarea id="cfgHang2" class="form-input font-mono text-sm leading-relaxed" rows="2"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-dark-muted mb-1.5 uppercase">Hệ số lương - Hạng I</label>
+                    <textarea id="cfgHang1" class="form-input font-mono text-sm leading-relaxed" rows="2"></textarea>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[11px] p-3 rounded-lg flex gap-2 items-start border border-amber-100 dark:border-amber-900/50">
+                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                    <p>Các hệ số phải được ngăn cách nhau bởi dấu phẩy (,). Hệ thống tự động cập nhật Bậc lương khi lưu.</p>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t border-slate-200 dark:border-dark-border flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
+                <button id="resetConfigBtn" class="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors focus:outline-none">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> Mặc định
+                </button>
+                <button id="saveConfigBtn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 focus:outline-none">
+                    Lưu cấu hình
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ONBOARDING (HƯỚNG DẪN) -->
+    <div id="onboardingModal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4">
+        <div id="onboardBackdrop" class="absolute inset-0 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm transition-opacity opacity-0"></div>
+        <div id="onboardContent" class="relative bg-white dark:bg-dark-card w-full max-w-md rounded-2xl shadow-2xl flex flex-col transition-all transform scale-95 opacity-0 overflow-hidden max-h-[95vh]">
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-center shrink-0 relative overflow-hidden">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md relative z-10 shadow-inner">
+                    <i class="fa-solid fa-rocket text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-extrabold text-white relative z-10">Hướng Dẫn Nhanh</h3>
+                <p class="text-blue-100 text-[13px] mt-1 relative z-10">Cách tính mức lương chuẩn Kế toán bằng EduSalary</p>
+            </div>
+            
+            <div class="p-5 md:p-6 space-y-4 overflow-y-auto">
+                <div class="flex gap-3 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 rounded-lg transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5"><strong class="text-sm">1</strong></div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-[13px] uppercase tracking-wide">Nhập Ngạch, Bậc Cơ Bản</h4>
+                        <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Chọn <strong class="text-slate-600 dark:text-slate-300">Cấp học, Hạng Chức Danh và Bậc lương</strong>. Hệ thống sẽ tự động điền Hệ số lương chuẩn tương ứng.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 rounded-lg transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0 mt-0.5"><strong class="text-sm">2</strong></div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-[13px] uppercase tracking-wide">Nhập Thâm niên, Phụ Cấp Vượt Khung</h4>
+                        <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Nhập <strong class="text-slate-600 dark:text-slate-300">Số Năm thâm niên</strong>. Nếu bạn Vượt khung, hãy nhập trực tiếp <strong class="text-slate-600 dark:text-slate-300">% Vượt khung</strong> vào ô tương ứng.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 rounded-lg transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 mt-0.5"><strong class="text-sm">3</strong></div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-[13px] uppercase tracking-wide">Cấu Hình Hệ Số</h4>
+                        <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Bạn có thể thay đổi <strong class="text-slate-600 dark:text-slate-300">Hệ số lương</strong> của các cấp trong phần Cài đặt ở góc phải.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-5 border-t border-slate-100 dark:border-slate-800/50 shrink-0">
+                <button id="startAppBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 focus:outline-none">
+                    Đã hiểu, Bắt đầu tính!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-8 mb-6 text-center text-slate-400 dark:text-dark-muted text-[11px] md:text-xs px-4 animate-fade-in-up delay-300">
+        <p>&copy; 2026 - Nh4tHuy.</p>
+    </footer>
+
+    <script>
+        // === HỆ THỐNG ĐỒNG BỘ THEME (SÁNG/TỐI) ===
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+        
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+        const updateTheme = (isDark) => {
+            if (isDark) htmlElement.classList.add('dark');
+            else htmlElement.classList.remove('dark');
+        };
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && prefersDarkScheme.matches)) {
+            updateTheme(true);
+        } else {
+            updateTheme(false);
+        }
+
+        prefersDarkScheme.addEventListener('change', (e) => {
+            if (!localStorage.getItem('color-theme')) {
+                updateTheme(e.matches);
+            }
+        });
+
+        themeToggleBtn.addEventListener('click', function() {
+            htmlElement.classList.toggle('dark');
+            localStorage.setItem('color-theme', htmlElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        // === CẤU HÌNH MẶC ĐỊNH ===
+        const DEFAULT_CONFIG = {
+            bhxhRate: 10.5,
+            heSoLuong: {
+                "MN": {
+                    "III": [2.10, 2.41, 2.72, 3.03, 3.34, 3.65, 3.96, 4.27, 4.58, 4.89],
+                    "II": [2.34, 2.67, 3.00, 3.33, 3.66, 3.99, 4.32, 4.65, 4.98],
+                    "I": [4.00, 4.34, 4.68, 5.02, 5.36, 5.70, 6.04, 6.38]
+                },
+                "PT": {
+                    "III": [2.34, 2.67, 3.00, 3.33, 3.66, 3.99, 4.32, 4.65, 4.98],
+                    "II": [4.00, 4.34, 4.68, 5.02, 5.36, 5.70, 6.04, 6.38],
+                    "I": [4.40, 4.74, 5.08, 5.42, 5.76, 6.10, 6.44, 6.78]
+                }
+            }
+        };
+
+        let appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+        const loadConfig = () => {
+            const savedConfig = localStorage.getItem('eduSalaryConfig');
+            if (savedConfig) {
+                try {
+                    let parsed = JSON.parse(savedConfig);
+                    if (!parsed.heSoLuong.MN) appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                    else appConfig = parsed;
+                } catch (e) { console.error("Lỗi đọc cấu hình."); }
+            }
+        };
+
+        const saveConfig = () => {
+            localStorage.setItem('eduSalaryConfig', JSON.stringify(appConfig));
+        };
+
+        // === XỬ LÝ NHẬP TIỀN TỆ (THOUSAND SEPARATOR) ===
+        const formatCurrencyInput = (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            if(val) e.target.value = parseInt(val, 10).toLocaleString('vi-VN');
+            else e.target.value = '';
+            calculate();
+        };
+
+        const getNumberFromInput = (inputEle) => {
+            if(!inputEle || !inputEle.value) return 0;
+            let rawStr = inputEle.value.replace(/\./g, '').replace(/,/g, '');
+            return parseFloat(rawStr) || 0;
+        };
+
+        document.querySelectorAll('.currency-input').forEach(input => {
+            input.addEventListener('input', formatCurrencyInput);
+        });
+
+        // === APP LOGIC ===
+        const inputs = {
+            capHoc: document.getElementById('capHoc'),
+            hangChucDanh: document.getElementById('hangChucDanh'),
+            bacLuong: document.getElementById('bacLuong'),
+            heSo: document.getElementById('heSo'),
+            luongCoSo: document.getElementById('luongCoSo'),
+            
+            chucVu: document.getElementById('chucVu'),
+            heSoChucVu: document.getElementById('heSoChucVu'),
+            
+            pcVuotKhung: document.getElementById('pcVuotKhung'),
+            thamNien: document.getElementById('thamNien'),
+            pcUuDai: document.getElementById('pcUuDai'),
+            pcThuHut: document.getElementById('pcThuHut'),
+            heSoKhuVuc: document.getElementById('heSoKhuVuc'),
+            heSoTrachNhiem: document.getElementById('heSoTrachNhiem'),
+            
+            thuNhapTangThem: document.getElementById('thuNhapTangThem'),
+            pcKhac: document.getElementById('pcKhac')
+        };
+
+        const outputs = {
+            pcThamNienHienThi: document.getElementById('pcThamNienHienThi'),
+            txtThucLanh: document.getElementById('txtThucLanh'),
+            txtGrossTop: document.getElementById('txtGrossTop'),
+            txtBhxhTop: document.getElementById('txtBhxhTop'),
+            txtGross: document.getElementById('txtGross'),
+            txtBhxh: document.getElementById('txtBhxh'),
+            txtTongTru: document.getElementById('txtTongTru'),
+            
+            fmNenBhxh: document.getElementById('fmNenBhxh'),
+            listHuong: document.getElementById('listHuong'),
+            
+            lblBhxhDetail: document.getElementById('lblBhxhDetail'),
+            fmBhxhDetail: document.getElementById('fmBhxhDetail'),
+            hintVuotKhung: document.getElementById('hintVuotKhung')
+        };
+
+        const formatVND = (amount) => new Intl.NumberFormat('vi-VN').format(Math.round(amount)) + ' đ';
+
+        const updateBacLuongOptions = () => {
+            const cap = inputs.capHoc.value;
+            const hang = inputs.hangChucDanh.value;
+            inputs.bacLuong.innerHTML = '';
+            
+            appConfig.heSoLuong[cap][hang].forEach((hs, i) => {
+                inputs.bacLuong.add(new Option(`Bậc ${i + 1} ( ${hs.toFixed(2)} )`, i));
+            });
+            inputs.heSo.value = appConfig.heSoLuong[cap][hang][0].toFixed(2);
+            outputs.hintVuotKhung.classList.add('hidden'); 
+            inputs.pcVuotKhung.classList.remove('bg-green-100', 'dark:bg-green-900/30', 'ring-2', 'ring-green-400');
+            calculate();
+        };
+
+        const createRowHuong = (title, formula, amount, highlight = false) => {
+            const titleColor = highlight ? 'text-green-700 dark:text-green-400 font-bold' : 'text-slate-700 dark:text-slate-300';
+            const valColor = highlight ? 'text-green-700 dark:text-green-400 font-bold' : 'text-slate-800 dark:text-slate-200 font-medium';
+            return `
+                <div class="flex justify-between items-center pb-2 border-b border-blue-100/50 dark:border-blue-800/20 last:border-0 last:pb-0">
+                    <div>
+                        <p class="text-[13px] md:text-sm ${titleColor}">${title}</p>
+                        <p class="text-[10px] md:text-[11px] text-slate-500 dark:text-slate-500 mt-0.5">${formula}</p>
+                    </div>
+                    <div class="text-[13px] md:text-sm ${valColor}">+ ${formatVND(amount)}</div>
+                </div>
+            `;
+        };
+
+        const calculate = () => {
+            // Check hint Vượt khung
+            const cap = inputs.capHoc.value;
+            const hang = inputs.hangChucDanh.value;
+            const bacIdx = parseInt(inputs.bacLuong.value);
+            const isMaxBac = bacIdx === (appConfig.heSoLuong[cap][hang].length - 1);
+            
+            if(isMaxBac && parseFloat(inputs.pcVuotKhung.value) === 0) {
+                outputs.hintVuotKhung.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i>Đã đạt bậc tối đa. Nhập % Vượt khung nếu có.`;
+                outputs.hintVuotKhung.classList.remove('hidden', 'text-green-600', 'dark:text-green-400');
+                outputs.hintVuotKhung.classList.add('text-amber-600', 'dark:text-amber-400');
+            } else {
+                outputs.hintVuotKhung.classList.add('hidden');
+            }
+
+            const lcs = getNumberFromInput(inputs.luongCoSo);
+            const hsL = parseFloat(inputs.heSo.value) || 0;
+            const hsCV = parseFloat(inputs.heSoChucVu.value) || 0;
+            const rateVK = parseFloat(inputs.pcVuotKhung.value) || 0;
+            const namTN = parseInt(inputs.thamNien.value) || 0;
+            const rateUD = parseFloat(inputs.pcUuDai.value) || 0;
+            const rateTH = parseFloat(inputs.pcThuHut.value) || 0;
+            const hsKV = parseFloat(inputs.heSoKhuVuc.value) || 0;
+            const hsTNhan = parseFloat(inputs.heSoTrachNhiem.value) || 0;
+            
+            const tntt = getNumberFromInput(inputs.thuNhapTangThem);
+            const pcKhac = getNumberFromInput(inputs.pcKhac);
+
+            const rateTN = namTN >= 5 ? namTN : 0;
+            outputs.pcThamNienHienThi.value = rateTN + '%';
+
+            // Phép tính
+            const pLcb = lcs * hsL;
+            const pCv = lcs * hsCV;
+            const pVk = pLcb * (rateVK / 100);
+            
+            const nenTinhPC = pLcb + pCv + pVk;
+            const pTn = nenTinhPC * (rateTN / 100);
+            const pUd = nenTinhPC * (rateUD / 100);
+            const pTh = nenTinhPC * (rateTH / 100);
+            const pKv = lcs * hsKV;
+            const pTNhan = lcs * hsTNhan;
+
+            const gross = pLcb + pCv + pVk + pTn + pUd + pTh + pKv + pTNhan + tntt + pcKhac;
+            const nenBH = pLcb + pCv + pVk + pTn;
+            const bhxh = nenBH * (appConfig.bhxhRate / 100);
+            const net = gross - bhxh;
+
+            // Render Kết quả tổng kèm Effect Pop
+            outputs.txtThucLanh.innerText = formatVND(net);
+            outputs.txtGrossTop.innerText = formatVND(gross);
+            outputs.txtBhxhTop.innerText = '- ' + formatVND(bhxh);
+            outputs.txtGross.innerText = formatVND(gross);
+            outputs.txtBhxh.innerText = '- ' + formatVND(bhxh);
+            outputs.txtTongTru.innerText = '- ' + formatVND(bhxh);
+
+            // Trigger Pop Animation cho số Thực lãnh
+            outputs.txtThucLanh.classList.remove('animate-pop');
+            void outputs.txtThucLanh.offsetWidth; // Trigger reflow
+            outputs.txtThucLanh.classList.add('animate-pop');
+
+            // Chi tiết Nền BHXH
+            let bhArr = ['Lương CB'];
+            if(pCv > 0) bhArr.push('PC Chức vụ');
+            if(pVk > 0) bhArr.push('PC Vượt khung');
+            if(pTn > 0) bhArr.push('PC Thâm niên');
+            outputs.fmNenBhxh.innerText = bhArr.join(' + ');
+            outputs.fmBhxhDetail.innerText = `Nền đóng BHXH × ${appConfig.bhxhRate}%`;
+            outputs.lblBhxhDetail.innerText = `Trừ BHXH, BHYT, BHTN (${appConfig.bhxhRate}%)`;
+
+            // Render Danh sách Được hưởng
+            let htmlHuong = '';
+            htmlHuong += createRowHuong('Lương cơ bản', `Lương cơ sở × ${hsL.toFixed(2)}`, pLcb);
+            if (pCv > 0) htmlHuong += createRowHuong('Phụ cấp chức vụ', `Lương CS × ${hsCV.toFixed(2)}`, pCv);
+            if (pVk > 0) htmlHuong += createRowHuong('Phụ cấp vượt khung', `Lương CB × ${rateVK}%`, pVk, true);
+            if (pTn > 0) htmlHuong += createRowHuong('Phụ cấp thâm niên nghề', `Lương CB × ${rateTN}%`, pTn);
+            if (pUd > 0) htmlHuong += createRowHuong('Phụ cấp ưu đãi', `Lương CB × ${rateUD}%`, pUd);
+            if (pTh > 0) htmlHuong += createRowHuong('Phụ cấp thu hút (ĐBKK)', `Lương CB × ${rateTH}%`, pTh);
+            if (pKv > 0) htmlHuong += createRowHuong('Phụ cấp khu vực', `Lương CS × ${hsKV.toFixed(2)}`, pKv);
+            if (pTNhan > 0) htmlHuong += createRowHuong('Phụ cấp trách nhiệm', `Lương CS × ${hsTNhan.toFixed(2)}`, pTNhan);
+            if (tntt > 0) htmlHuong += createRowHuong('Thu nhập tăng thêm', 'Tự chủ tài chính', tntt);
+            if (pcKhac > 0) htmlHuong += createRowHuong('Phụ cấp khác', 'Cộng trực tiếp', pcKhac);
+
+            outputs.listHuong.innerHTML = htmlHuong;
+        };
+
+        if (inputs.capHoc) inputs.capHoc.addEventListener('change', updateBacLuongOptions);
+        inputs.hangChucDanh.addEventListener('change', updateBacLuongOptions);
+        inputs.bacLuong.addEventListener('change', () => {
+            const cap = inputs.capHoc.value;
+            inputs.heSo.value = appConfig.heSoLuong[cap][inputs.hangChucDanh.value][inputs.bacLuong.value].toFixed(2);
+            calculate();
+        });
+        
+        inputs.chucVu.addEventListener('change', () => {
+            inputs.heSoChucVu.value = inputs.chucVu.value;
+            calculate();
+        });
+
+        // Event listener thông thường thay cho xử lý vượt khung
+        inputs.heSo.addEventListener('input', calculate);
+        inputs.heSo.addEventListener('change', calculate);
+
+        Object.values(inputs).forEach(input => {
+            if(!input.classList.contains('currency-input') && input.id !== 'heSo') {
+                input.addEventListener('input', calculate);
+            }
+            if(input.id !== 'heSo') {
+                input.addEventListener('change', calculate);
+            }
+        });
+
+        // === LOGIC MODAL CẤU HÌNH ===
+        const modal = document.getElementById('configModal');
+        const backdrop = document.getElementById('configBackdrop');
+        const modalContent = document.getElementById('configContent');
+        
+        const openModal = () => {
+            const cap = inputs.capHoc.value;
+            document.getElementById('cfgTitleCap').innerText = cap === 'MN' ? 'Mầm non' : 'Phổ thông (TH, THCS, THPT)';
+            document.getElementById('cfgBhxh').value = appConfig.bhxhRate;
+            document.getElementById('cfgHang3').value = appConfig.heSoLuong[cap]["III"].join(', ');
+            document.getElementById('cfgHang2').value = appConfig.heSoLuong[cap]["II"].join(', ');
+            document.getElementById('cfgHang1').value = appConfig.heSoLuong[cap]["I"].join(', ');
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        };
+
+        const closeModal = () => {
+            backdrop.classList.add('opacity-0');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        };
+
+        const parseArray = (str) => str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+
+        document.getElementById('saveConfigBtn').addEventListener('click', () => {
+            const cap = inputs.capHoc.value;
+            const bhxh = parseFloat(document.getElementById('cfgBhxh').value);
+            const arr3 = parseArray(document.getElementById('cfgHang3').value);
+            const arr2 = parseArray(document.getElementById('cfgHang2').value);
+            const arr1 = parseArray(document.getElementById('cfgHang1').value);
+
+            if(!isNaN(bhxh)) appConfig.bhxhRate = bhxh;
+            if(arr3.length > 0) appConfig.heSoLuong[cap]["III"] = arr3;
+            if(arr2.length > 0) appConfig.heSoLuong[cap]["II"] = arr2;
+            if(arr1.length > 0) appConfig.heSoLuong[cap]["I"] = arr1;
+
+            saveConfig();
+            updateBacLuongOptions();
+            closeModal();
+        });
+
+        document.getElementById('resetConfigBtn').addEventListener('click', () => {
+            if(confirm("Bạn có chắc muốn khôi phục toàn bộ cấu hình về mặc định của hệ thống?")) {
+                appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                saveConfig();
+                updateBacLuongOptions();
+                closeModal();
+            }
+        });
+
+        document.getElementById('configToggle').addEventListener('click', openModal);
+        document.getElementById('closeConfigBtn').addEventListener('click', closeModal);
+        backdrop.addEventListener('click', closeModal);
+
+        // === LOGIC ONBOARDING POPUP ===
+        const onbModal = document.getElementById('onboardingModal');
+        const onbBackdrop = document.getElementById('onboardBackdrop');
+        const onbContent = document.getElementById('onboardContent');
+        const btnStart = document.getElementById('startAppBtn');
+        const btnHelpToggle = document.getElementById('helpToggle');
+
+        const showOnboarding = () => {
+            onbModal.classList.remove('hidden');
+            onbModal.classList.add('flex');
+            setTimeout(() => {
+                onbBackdrop.classList.remove('opacity-0');
+                onbContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        };
+
+        const hideOnboarding = () => {
+            onbBackdrop.classList.add('opacity-0');
+            onbContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                onbModal.classList.add('hidden');
+                onbModal.classList.remove('flex');
+            }, 200);
+        };
+
+        btnStart.addEventListener('click', () => {
+            localStorage.setItem('eduSalaryOnboarding', 'true');
+            hideOnboarding();
+        });
+        
+        btnHelpToggle.addEventListener('click', showOnboarding);
+        onbBackdrop.addEventListener('click', hideOnboarding);
+
+        // Khởi chạy App
+        window.onload = () => {
+            loadConfig();
+            updateBacLuongOptions();
+            
+            if (!localStorage.getItem('eduSalaryOnboarding')) {
+                setTimeout(showOnboarding, 500);
+            }
+        };
+
+    </script>
+</body>
+</html>
